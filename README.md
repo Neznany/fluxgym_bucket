@@ -12,7 +12,7 @@ Other changes from pull requests
 - proper calculation of step count (in original it would count also non image files, giving you wildly exgerrated step-count)
 - UTF-8 for caption
 
-My changes were done so it can correctly work with buckets. The original code not only merged resolution and resize into one parameter but it will always resize all images, making -enable_bucket counter-intuitive
+My changes were done so it can correctly work with buckets. The original code not only merged resolution and resize into one parameter but it will always resize all images, making -enable_bucket counter-intuitive or kinda worthless
 
 # Example 0 for simple no bucket
 
