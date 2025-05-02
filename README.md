@@ -29,10 +29,10 @@ resize: 0
 resolution width: 768
 resolution height: 0
 
-Setting resize 0 will not resize the input images and it will fit images to 768 * 768 pixel area (it means the buckets will all be created to fit the pixel area, so even if you have 768 x 1024, the bucket will be 640 x 864 which will crop from your originals (as the area of 640 x 864 is close to 768 x 768). 
+Setting resize 0 will not resize the input images and it will fit images to 768 * 768 pixel area (it means the buckets will all be created to fit the pixel area, so even if you have 768 x 1024, the bucket will be sized down to 640 x 864 and so your original images (as the area of 640 x 864 is close to 768 x 768). 
 It's a good option if you have most images square and then add various odd aspect ratios or say you have 1/3 square 1/3 portrait and 1/3 landscape
 
-Here is the math:
+Here is the math (train_util.py)
 Original image size:
 
 width = 768
@@ -67,15 +67,16 @@ width = 640
 height = 864
 
 
-# Example 2 for bucket with mostly non square images
+# Example 2 for bucket with mostly non square images while we don't want them to be resized
 resize: 0
 resolution width: 768
 resolution height: 1024
 
 will create buckets to fit the pixel area of 768x1024 so if you have 768 x 1024 images they will be directly used in the 768 bucket, same if you have 1024 x 768, they will be in 1024 bucket as the area is same.
 This is a good option if your images are largely non-square. Setting resolution to the size of your images will ensure they will be used without cropping. 
-For example most of your images are 768 x 1024
+For example if most or all of your images are 768 x 1024 use this option
 
+# Important 
  Aspect-ratio-aware resizing and bucketing:
 
     If no_upscale = False:
@@ -83,6 +84,29 @@ For example most of your images are 768 x 1024
 
     If no_upscale = True:
     It only downscales the image, to keep it within a maximum allowed area (self.max_area calculated from resultion width x resolution height), while preserving the aspect ratio.
+
+
+2. Resolution rounding:
+
+Uses helper function:
+
+def round_to_steps(self, x):
+    x = int(x + 0.5)
+    return x - x % self.reso_steps
+
+This rounds x to the nearest lower multiple of self.reso_steps.
+3. Final bucket size:
+
+    After resizing, it trims both width and height to be divisible by reso_steps, avoiding any padding.
+
+max_area represents the maximum allowed pixel area for an image before it gets resized.
+
+max_area = resolution_width * resolution_height  # for example, 1024 * 1024
+
+It sets an upper bound on the number of pixels an image can occupy. If an image exceeds this area, it's resized down, keeping the aspect ratio, so that:
+
+new_width * new_height <= max_area
+
 
 
 - **Frontend:** The WebUI forked from [AI-Toolkit](https://github.com/ostris/ai-toolkit) (Gradio UI created by https://x.com/multimodalart)
