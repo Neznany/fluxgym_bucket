@@ -17,7 +17,9 @@ My changes were done so it can correctly work with buckets. The original code no
 # Example 0 for simple no bucket
 
 resize: 768
+
 resolution width: 768
+
 resolution height: 0
 
 It will resize all images to 768 in the shortest side and crop from them to the square. If your images are not square (for example portrait aspect) the result LORA will love to crop heads and feet
@@ -26,7 +28,9 @@ It will resize all images to 768 in the shortest side and crop from them to the 
 You should manually create the desired multi-resolution images. Don't just gobble random images in various random sizes - this will NOT work as you imagine. So say stick to 768 x 768, 768 x 1024, 1024 x 768 for 3 buckets. If you put random images that are seriously different than the resolution the result will be glorified garbage as the resizing will create softer images and LORA loves to pickup on those!
 
 resize: 0
+
 resolution width: 768
+
 resolution height: 0
 
 Setting resize 0 will not resize the input images and it will fit images to 768 * 768 pixel area (it means the buckets will all be created to fit the pixel area, so even if you have 768 x 1024, the bucket will be sized down to 640 x 864 and so your original images (as the area of 640 x 864 is close to 768 x 768). 
@@ -68,8 +72,11 @@ height = 864
 
 
 # Example 2 for bucket with mostly non square images preserving the maximum quality
+
 resize: 0
+
 resolution width: 768
+
 resolution height: 1024
 
 will create buckets to fit the pixel area of 768x1024 so if you have 768 x 1024 images they will be directly used in the 768 bucket, same if you have 1024 x 768, they will be in 1024 bucket as the area is same.
