@@ -2,13 +2,13 @@
 
 Dead simple web UI for training FLUX LoRA **with LOW VRAM (12GB/16GB/20GB) support.**
 
-# Here are my fixes, since the original author doesn't incorporate the pull requests. 
+# Here are my additions: 
 
 - LORA resolution and resize is separated
 - resolution is a tuple (width and Height)
 - resize = 0 will not resize the images
 
-Other changes from pull requests
+Other changes from original pull requests
 - proper calculation of step count (in original it would count also non image files, giving you wildly exgerrated step-count)
 - UTF-8 for caption
 
