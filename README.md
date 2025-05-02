@@ -2,6 +2,83 @@
 
 Dead simple web UI for training FLUX LoRA **with LOW VRAM (12GB/16GB/20GB) support.**
 
+# Here are my fixes, since the original author doesn't incorporate the pull requests. 
+
+- LORA resolution and resize is separated
+- resolution is a tuple (width and Height)
+- resize = 0 will not resize the images
+
+Other changes from pull requests
+- proper calculation of step count (in original it would count also non image files, giving you wildly exgerrated step-count)
+- UTF-8 for caption
+
+My changes were done so it can correctly work with buckets. The original code not only merged resolution and resize into one parameter but it will always resize all images, making -enable_bucket counter-intuitive
+
+# Example 0 for simple no bucket
+
+resize: 768
+resolution width: 768
+resolution height: 0
+
+It will resize all images to 768 in the shortest side and crop from them to the square. If your images are not square (for example portrait aspect) the result LORA will love to crop heads and feet
+
+# Example 1 for bucket with mostly square images or mix of square and non square
+You should manually create the desired multi-resolution images. Don't just gobble random images in various random sizes - this will NOT work as you imagine. So say stick to 768 x 768, 768 x 1024, 1024 x 768 for 3 buckets. If you put random images that are seriously different than the resolution the result will be glorified garbage
+
+resize: 0
+resolution width: 768
+resolution height: 0
+
+Setting resize 0 will not resize the input images and it will fit images to 768 * 768 pixel area (it means the buckets will all be created to fit the pixel area, so even if you have 768 x 1024, the bucket will be 640 x 864 which will crop from your originals (as the area of 640 x 864 is close to 768 x 768). 
+It's a good option if you have most images square and then add various odd aspect ratios or say you have 1/3 square 1/3 portrait and 1/3 landscape
+
+Here is the math:
+Original image size:
+
+width = 768
+height = 1024
+aspect_ratio = 768 / 1024 = 0.75
+
+Check pixel area:
+
+768 × 1024 = 786,432 pixels > 589,824 → bucket needs downscaling
+
+Use formulas from code:
+
+resized_width = sqrt(max_area * aspect_ratio)
+resized_height = max_area / resized_width
+
+Plug in numbers:
+
+resized_width = sqrt(589824 × 0.75) = sqrt(442368) ≈ 665.07
+resized_height = 589824 / 665.07 ≈ 886.68
+
+Round sizes:
+Final resized dimensions before rounding to reso_steps:
+
+width ≈ 665
+height ≈ 887
+
+Rounded to reso_steps (e.g., 64):
+If reso_steps = 64, your bucketing logic might round down like:
+
+bucket:
+width = 640
+height = 864
+
+
+# Example 2 for bucket with mostly non square images
+resize: 0
+resolution width: 768
+resolution height: 1024
+
+will create buckets to fit the pixel area of 768x1024 so if you have 768 x 1024 images they will be directly used in the 768 bucket, same if you have 1024 x 768, they will be in 1024 bucket as the area is same.
+This is a good option if your images are largely non-square. Setting resolution to the size of your images will ensure they will be used without cropping. 
+For example most of your images are 768 x 1024
+
+
+
+
 - **Frontend:** The WebUI forked from [AI-Toolkit](https://github.com/ostris/ai-toolkit) (Gradio UI created by https://x.com/multimodalart)
 - **Backend:** The Training script powered by [Kohya Scripts](https://github.com/kohya-ss/sd-scripts)
 
