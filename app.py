@@ -200,7 +200,7 @@ def load_captioning(uploaded_files, concept_sentence):
         if(image_value):
             base_name = os.path.splitext(os.path.basename(image_value))[0]
             if base_name in txt_files_dict:
-                with open(txt_files_dict[base_name], 'r') as file:
+                with open(txt_files_dict[base_name], 'r', encoding='utf-8') as file:
                     corresponding_caption = file.read()
 
         # Update value of captioning area
@@ -244,8 +244,9 @@ def create_dataset(destination_folder, size, *inputs):
         if ext == '.txt':
             continue
 
-        # resize the images
-        resize_image(new_image_path, new_image_path, size)
+        # resize the images only if it is > 0
+        if size > 0:
+            resize_image(new_image_path, new_image_path, size)
 
         # copy the captions
 
@@ -377,7 +378,8 @@ def resolve_path_without_quotes(p):
 def gen_sh(
     base_model,
     output_name,
-    resolution,
+    resolutionX,
+    resolutionY,
     seed,
     workers,
     learning_rate,
@@ -513,10 +515,19 @@ def gen_sh(
 
 def gen_toml(
   dataset_folder,
-  resolution,
+  resolutionX,
+  resolutionY,
   class_tokens,
   num_repeats
 ):
+    if resolutionY == 0:
+        resolutionY = resolutionX
+
+    if resolutionX != resolutionY:
+        resolution = f"[{resolutionX}, {resolutionY}]"
+    else:
+        resolution = f"{resolutionX}"
+
     toml = f"""[general]
 shuffle_caption = false
 caption_extension = '.txt'
@@ -535,7 +546,13 @@ keep_tokens = 1
 
 def update_total_steps(max_train_epochs, num_repeats, images):
     try:
-        num_images = len(images)
+        # only count real image files
+        img_exts = {'.jpg','.jpeg','.png','.bmp','.gif','.webp'}
+        num_images = sum(
+            1 for path in images
+            if os.path.splitext(path)[1].lower() in img_exts
+        )
+        # num_images = len(images)
         total_steps = max_train_epochs * num_images * num_repeats
         print(f"max_train_epochs={max_train_epochs} num_images={num_images}, num_repeats={num_repeats}, total_steps={total_steps}")
         return gr.update(value = total_steps)
@@ -642,7 +659,8 @@ def start_training(
 def update(
     base_model,
     lora_name,
-    resolution,
+    resolutionX,
+    resolutionY,
     seed,
     workers,
     class_tokens,
@@ -663,7 +681,8 @@ def update(
     sh = gen_sh(
         base_model,
         output_name,
-        resolution,
+        resolutionX,
+        resolutionY,
         seed,
         workers,
         learning_rate,
@@ -679,7 +698,8 @@ def update(
     )
     toml = gen_toml(
         dataset_folder,
-        resolution,
+        resolutionX,
+        resolutionY,
         class_tokens,
         num_repeats
     )
@@ -928,7 +948,9 @@ with gr.Blocks(elem_id="app", theme=theme, css=css, fill_width=True) as demo:
                     total_steps = gr.Number(0, interactive=False, label="Expected training steps")
                     sample_prompts = gr.Textbox("", lines=5, label="Sample Image Prompts (Separate with new lines)", interactive=True)
                     sample_every_n_steps = gr.Number(0, precision=0, label="Sample Image Every N Steps", interactive=True)
-                    resolution = gr.Number(value=512, precision=0, label="Resize dataset images")
+                    resize = gr.Number(value=512, precision=0, label="Resize Images (0 = don't resize [for buckets])", interactive=True)
+                    resolutionX = gr.Number(value=512, precision=0, label="LORA Resolution width", interactive=True)
+                    resolutionY = gr.Number(value=0, precision=0, label="LORA Resolution height -  0 = square", interactive=True)
                 with gr.Column():
                     gr.Markdown(
                         """# Step 2. Dataset
@@ -1042,7 +1064,9 @@ with gr.Blocks(elem_id="app", theme=theme, css=css, fill_width=True) as demo:
     listeners = [
         base_model,
         lora_name,
-        resolution,
+        resolutionX,
+        resolutionY,
+        resize,
         seed,
         workers,
         concept_sentence,
@@ -1100,7 +1124,7 @@ with gr.Blocks(elem_id="app", theme=theme, css=css, fill_width=True) as demo:
         outputs=[total_steps]
     )
     concept_sentence.change(fn=update_sample, inputs=[concept_sentence], outputs=sample_prompts)
-    start.click(fn=create_dataset, inputs=[dataset_folder, resolution, images] + caption_list, outputs=dataset_folder).then(
+    start.click(fn=create_dataset, inputs=[dataset_folder, resize, images] + caption_list, outputs=dataset_folder).then(
         fn=start_training,
         inputs=[
             base_model,
