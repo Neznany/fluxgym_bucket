@@ -67,7 +67,7 @@ width = 640
 height = 864
 
 
-# Example 2 for bucket with mostly non square images while we don't want them to be resized
+# Example 2 for bucket with mostly non square images preserving the maximum quality
 resize: 0
 resolution width: 768
 resolution height: 1024
