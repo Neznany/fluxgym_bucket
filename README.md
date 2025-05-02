@@ -76,7 +76,13 @@ will create buckets to fit the pixel area of 768x1024 so if you have 768 x 1024 
 This is a good option if your images are largely non-square. Setting resolution to the size of your images will ensure they will be used without cropping. 
 For example most of your images are 768 x 1024
 
+ Aspect-ratio-aware resizing and bucketing:
 
+    If no_upscale = False:
+    It looks for the closest predefined bucket (in aspect ratio) and scales the image up or down to fit.
+
+    If no_upscale = True:
+    It only downscales the image, to keep it within a maximum allowed area (self.max_area calculated from resultion width x resolution height), while preserving the aspect ratio.
 
 
 - **Frontend:** The WebUI forked from [AI-Toolkit](https://github.com/ostris/ai-toolkit) (Gradio UI created by https://x.com/multimodalart)
