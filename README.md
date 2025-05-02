@@ -33,8 +33,9 @@ resolution width: 768
 
 resolution height: 0
 
-Setting resize 0 will not resize the input images and it will fit images to 768 * 768 pixel area (it means the buckets will all be created to fit the pixel area, so even if you have 768 x 1024, the bucket will be sized down to 640 x 864 and so your original images (as the area of 640 x 864 is close to 768 x 768). 
-It's a good option if you have most images square and then add various odd aspect ratios or say you have 1/3 square 1/3 portrait and 1/3 landscape
+Setting resize 0 will not resize the input images and it will fit images to 768 * 768 pixel area (it means the buckets will all be created to fit the pixel area, so even if you have 768 x 1024, the bucket will be sized down to 640 x 864 and so your original images (as the area of 640 x 864 is close to 768 x 768). If you for example want area fit 768 x 1024 then you can set 896 as the square area (resolution width) because 896 x 896 is roughly same area as 768 x 1024
+
+This it's a good option if you have most images square and then add various odd aspect ratios or say you have 1/3 square 1/3 portrait and 1/3 landscape
 
 Here is the math (train_util.py)
 Original image size:
@@ -114,6 +115,9 @@ It sets an upper bound on the number of pixels an image can occupy. If an image 
 
 new_width * new_height <= max_area
 
+By default kohya_ss will use hamming for scaling down and lanczos for scaling up.
+
+You probably donm't really want to scale the images (especially not up) so the best is to make the area (= width x height) same for all aspects so: 768 x 1024 and 1024 x 768 and square 896 × 896 all have aboyt the same area
 
 
 - **Frontend:** The WebUI forked from [AI-Toolkit](https://github.com/ostris/ai-toolkit) (Gradio UI created by https://x.com/multimodalart)
