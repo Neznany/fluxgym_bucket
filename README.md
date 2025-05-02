@@ -80,8 +80,8 @@ resolution width: 768
 resolution height: 1024
 
 will create buckets to fit the pixel area of 768x1024 so if you have 768 x 1024 images they will be directly used in the 768 bucket, same if you have 1024 x 768, they will be in 1024 bucket as the area is same.
-This is a good option if your images are largely non-square. Setting resolution to the size of your images will ensure they will be used without cropping. 
-For example if most or all of your images are 768 x 1024 use this option
+This is a good option if your images are largely non-square. Setting resolution to the size of your images will ensure they will be used without cropping and resizing. 
+For example if most or all of your images are 768 x 1024 use this option. Use --no_upscale option
 
 # Important 
  Aspect-ratio-aware resizing and bucketing:
