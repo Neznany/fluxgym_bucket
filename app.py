@@ -661,6 +661,7 @@ def update(
     lora_name,
     resolutionX,
     resolutionY,
+    resize,
     seed,
     workers,
     class_tokens,
