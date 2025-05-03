@@ -135,8 +135,9 @@ new_width * new_height <= max_area
 
 By default kohya_ss will use hamming for scaling down and lanczos for scaling up.
 
-You probably donm't really want to scale the images up.
+You probably donm't really want to scale the images up so use --no_bucket_upscale
 
+# The original readme follows
 
 - **Frontend:** The WebUI forked from [AI-Toolkit](https://github.com/ostris/ai-toolkit) (Gradio UI created by https://x.com/multimodalart)
 - **Backend:** The Training script powered by [Kohya Scripts](https://github.com/kohya-ss/sd-scripts)
