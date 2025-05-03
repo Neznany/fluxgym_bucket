@@ -1,4 +1,4 @@
-# Flux Gym
+# Flux Gym with proper aspec ratio support and buckets
 
 Enhanced Dead simple web UI for training FLUX LoRA **with LOW VRAM (12GB/16GB/20GB) support.**
 
@@ -28,7 +28,7 @@ It will resize all images to 768 in the shortest side and crop from them to the 
 
 # Example 1 for bucket with mostly square images or mix of square and non square
 You should manually create the desired multi-resolution images. Don't just gobble random images in various random sizes - this will NOT work as you imagine. So say stick to 768 x 768, 768 x 1024, 1024 x 768 for 3 buckets. If you put random images that are seriously different than the resolution the result will be glorified garbage as the resizing will make it blurry (LORA seems to picks up on that part most).
-You probably want to always use --bucket_no_upscale because upsaclaiing buckets makes things worse. 
+You probably want to always use --bucket_no_upscale because upsaclaiing buckets makes things worse every time. 
 
 resize: 0
 
@@ -40,7 +40,7 @@ resolution height: 0
 
 --bucket_no_upscale
 
-Setting resize 0 will not resize the input images and it will fit images to 768 * 768 pixel area (it means the buckets will all be created to fit the pixel area, so even if you have 768 x 1024, the bucket will be sized down to 640 x 864 and so your original images will be resized (as the area of 640 x 864 is close to 768 x 768). If you for example want area fit 768 x 1024 then you can set 896 as the square area (resolution width) because 896 x 896 is roughly same area as 768 x 1024
+Setting resize 0 will **not** resize the input images and it will fit images to 768 * 768 pixel area (it means the buckets will all be created to fit the pixel area, so even if you have 768 x 1024, the bucket will be sized down to 640 x 864 and so your original images will be resized (as the area of 640 x 864 is close to 768 x 768). If you for example want area fit 768 x 1024 then you can set 896 as the square area (resolution width) because 896 x 896 is roughly same area as 768 x 1024
 
 So this it's a good option if you have most images square and then add various odd aspect ratios or say you have 1/3 square 1/3 portrait and 1/3 landscape
 
@@ -79,7 +79,7 @@ width = 640
 height = 864
 
 
-# Example 2 for bucket with non square images preserving the maximum quality
+# Example 2 for bucket with non square images preserving the maximum quality and aspect
 
 resize: 0
 
@@ -93,7 +93,7 @@ resolution height: 1024
 
 will create buckets to fit the pixel area of 768x1024 so if you have 768 x 1024 images they will be directly used in the bucket, same if you have 1024 x 768, they will be in 1024 bucket as the area is same.
 This is a good option if your images are largely non-square. Setting resolution to the size of your images will ensure they will be used without cropping and resizing. 
-For example if most or all of your images are 768 x 1024 use this option. 
+For example if most or all of your images are 768 x 1024 use this option and your LORA will correctly use the aspect ratio without cutting heads and feet
 
 # Important 
  Aspect-ratio-aware resizing and bucketing:
