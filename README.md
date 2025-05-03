@@ -16,6 +16,7 @@ Other changes from original pull requests
 
 My changes were done so it can correctly work with buckets. The original code not only merged resolution and resize into one parameter but it will always resize all images, making -enable_bucket counter-intuitive or kinda worthless
 
+# Install
 if you have working fluxgym, all you need to do is replace app.py from this repo into yours (same if you use Stability Matrix etc...)
 That's all where the changes are.
 
