@@ -197,6 +197,7 @@ To learn more, check out this X thread: https://x.com/cocktailpeanut/status/1832
 
 You can automatically install and launch everything locally with Pinokio 1-click launcher: https://pinokio.computer/item?uri=https://github.com/cocktailpeanut/fluxgym
 
+!!! After that you can replace the original app.py with the app.py from this repo
 
 ## 2. Install Manually
 
