@@ -135,7 +135,7 @@ new_width * new_height <= max_area
 
 By default kohya_ss will use hamming for scaling down and lanczos for scaling up.
 
-You probably donm't really want to scale the images (especially not up) so the best is to make the area (= width x height) same for all aspects so: 768 x 1024 and 1024 x 768 and square 896 × 896 all have aboyt the same area
+You probably donm't really want to scale the images up.
 
 
 - **Frontend:** The WebUI forked from [AI-Toolkit](https://github.com/ostris/ai-toolkit) (Gradio UI created by https://x.com/multimodalart)
