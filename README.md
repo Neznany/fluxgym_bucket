@@ -102,7 +102,7 @@ will create buckets to fit the pixel area of 768x1024 so if you have 768 x 1024 
 This is a good option if your images are largely non-square. Setting resolution to the size of your images will ensure they will be used without cropping and resizing. 
 For example if most or all of your images are 768 x 1024 use this option and your LORA will correctly use the aspect ratio without cutting heads and feet
 
-# Important 
+# Some theory 
  Aspect-ratio-aware resizing and bucketing:
 
     If no_upscale = False:
