@@ -23,7 +23,7 @@ That's all where the changes are.
 ![image](https://github.com/user-attachments/assets/0811780b-6193-4661-92f8-fb7fa2876d6e)
 
 
-# Example 0 for simple no bucket
+# Example 0 for simple LORA without buckets
 
 resize: 768
 
