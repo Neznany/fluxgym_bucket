@@ -1,6 +1,8 @@
 # Flux Gym
 
-Dead simple web UI for training FLUX LoRA **with LOW VRAM (12GB/16GB/20GB) support.**
+Enhanced Dead simple web UI for training FLUX LoRA **with LOW VRAM (12GB/16GB/20GB) support.**
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/Q5Q5MOB4M)
 
 # Here are my additions: 
 
