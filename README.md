@@ -217,6 +217,8 @@ Your folder structure will look like this:
   /sd-scripts
 ```
 
+!!! Replace app.y from this repo to the installed folder (that's all the changes I made)
+
 Now activate a venv from the root `fluxgym` folder:
 
 If you're on Windows:
