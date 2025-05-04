@@ -55,7 +55,7 @@ resolution height: 0
 
 --bucket_no_upscale
 
---max_bucket_reso set to the reslolution width or larger: 768 
+--max_bucket_reso: 768 (set to the reslolution width or larger: 768)
 (I know the script says min_bucket_reso and max_bucket_reso are ignored if bucket_no_upscale is set, but actually it needs to be set as the max bucket size is calculated from it)
 If all images are within one bucket (they are the same size), this doesn't need to be set but if you have multiple buckets it NEEDS to be set.
 
@@ -111,7 +111,7 @@ resolution height: 1024
 
 --bucket_no_upscale
 
---max_bucket_reso set to the reslolution width or larger: 768 
+--max_bucket_reso set: 1024  (set to the reslolution width or height (whichever is larger) or larger)
 (I know the script says min_bucket_reso and max_bucket_reso are ignored if bucket_no_upscale is set, but actually it needs to be set as the max bucket size is calculated from it)
 If all images are within one bucket (they are the same size), this doesn't need to be set but if you have multiple buckets it NEEDS to be set.
 
