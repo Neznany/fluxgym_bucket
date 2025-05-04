@@ -18,7 +18,7 @@ Other changes from original pull requests
 - proper calculation of step count (in original it would count also non image files, giving you wildly exgerrated step-count)
 - UTF-8 for caption
 
-My changes were done so it can correctly work with buckets. The original code not only merged resolution and resize into one parameter but it will always resize all images, making -enable_bucket counter-intuitive or kinda worthless
+My changes were done so it can correctly work with buckets. The original code not only merged resolution and resize into one parameter but it will always resize all images, making -enable_bucket counter-intuitive or kinda worthless because it will lead in double resizing (potentially in both direction)
 
 # Install
 if you have working fluxgym, all you need to do is replace app.py from this repo into yours (same if you use Stability Matrix, Pinokio etc...)
