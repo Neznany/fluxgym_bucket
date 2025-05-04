@@ -9,6 +9,9 @@ Enhanced Dead simple web UI for training FLUX LoRA **with LOW VRAM (12GB/16GB/20
 - LORA resolution and resize is separated
 - resolution is a tuple (width and Height)
 - resize = 0 will not resize the images
+  
+![image](https://github.com/user-attachments/assets/5a7bbd4d-568f-49b8-9255-115470ad523e)
+
 
 # Planned features:
 - save/load config (not yet published)
@@ -29,9 +32,6 @@ My changes were done so it can correctly work with buckets. The original code no
 # Install
 if you have working fluxgym, all you need to do is replace app.py from this repo into yours (same if you use Stability Matrix, Pinokio etc...)
 That's all where the changes are.
-
-![image](https://github.com/user-attachments/assets/5a7bbd4d-568f-49b8-9255-115470ad523e)
-
 
 # Example 0 for simple LORA without buckets
 
