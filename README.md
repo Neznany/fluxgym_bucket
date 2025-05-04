@@ -12,9 +12,11 @@ Enhanced Dead simple web UI for training FLUX LoRA **with LOW VRAM (12GB/16GB/20
 
 # Planned:
 - save/load config (not yet)
+  
   ![image](https://github.com/user-attachments/assets/d6279174-6c03-44b7-88c9-d5fba58e3b85)
 
 - Simple set buckets or no buckets (will fill all the necessary params) (not yet)
+  
   ![image](https://github.com/user-attachments/assets/8099e9de-e337-488f-a9e4-e04ae019a8b4)
 
 
