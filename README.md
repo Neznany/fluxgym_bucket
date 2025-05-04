@@ -39,7 +39,10 @@ It will resize all images to 768 in the shortest side and crop from them to the 
 
 # Example 1 for bucket with mostly square images or mix of square and non square
 You should manually create the desired multi-resolution images. Don't just gobble random images in various random sizes - this will NOT work as you imagine. So say stick to 768 x 768, 768 x 1024, 1024 x 768 for 3 buckets. If you put random images that are seriously different than the resolution the result will be glorified garbage as the resizing will make it blurry (LORA seems to picks up on that part most).
-You probably want to always use --bucket_no_upscale because upsaclaiing buckets makes things worse every time. 
+You probably want to always use --bucket_no_upscale because upsaclaing buckets makes things worse every time. 
+In short: create the image set with only a few different image sizes, but also don't go crazy on the size itself (large size will not help, rather make things worse), keep it around the size they will be used as specified in Training Resolution (So 512, 768...)
+
+So for example: 15 images 767x768, 5 images 768x1024, 5 images 1024x768, don't put random odd image sizes, prepare these in advance.
 
 resize: 0
 
@@ -95,6 +98,7 @@ height = 864
 
 
 # Example 2 for bucket with non square images preserving the maximum quality and aspect
+So for example: 20 images 768x1024, 5 images 1024x768
 
 resize: 0
 
@@ -110,9 +114,9 @@ resolution height: 1024
 (I know the script says min_bucket_reso and max_bucket_reso are ignored if bucket_no_upscale is set, but actually it needs to be set as the max bucket size is calculated from it)
 If all images are within one bucket (they are the same size), this doesn't need to be set but if you have multiple buckets it NEEDS to be set.
 
-will create buckets to fit the pixel area of 768x1024 so if you have 768 x 1024 images they will be directly used in the bucket, same if you have 1024 x 768, they will be in 1024 bucket as the area is same.
-This is a good option if your images are largely non-square. Setting resolution to the size of your images will ensure they will be used without cropping and resizing. 
-For example if most or all of your images are 768 x 1024 use this option and your LORA will correctly use the aspect ratio without cutting heads and feet
+will create buckets to fit the pixel area of 768x1024 so if you have 768 x 1024 images they will be directly used in the bucket, same if you have 1024 x 768, they will be in another bucket unchanged as the area is the same.
+This is a good option if your images are largely non-square. Setting resolution to the size of your images will ensure they will be used without cropping and resizing during the bucket creation. 
+For example if most or all of your images are 768 x 1024 use this option and your LORA will correctly use the aspect ratio without cutting heads and feet and use the input images directly without resizing
 
 # Some theory 
  Aspect-ratio-aware resizing and bucketing:
