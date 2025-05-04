@@ -24,7 +24,7 @@ My changes were done so it can correctly work with buckets. The original code no
 if you have working fluxgym, all you need to do is replace app.py from this repo into yours (same if you use Stability Matrix, Pinokio etc...)
 That's all where the changes are.
 
-![image](https://github.com/user-attachments/assets/0811780b-6193-4661-92f8-fb7fa2876d6e)
+![image](https://github.com/user-attachments/assets/4b29d323-9848-4ac9-8183-e12029022588)
 
 
 # Example 0 for simple LORA without buckets
