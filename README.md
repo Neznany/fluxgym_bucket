@@ -11,8 +11,8 @@ Enhanced Dead simple web UI for training FLUX LoRA **with LOW VRAM (12GB/16GB/20
 - resize = 0 will not resize the images
 
 Planned:
-- save/load config
-- Simple set buckets or no buckets (will fill all the necessary params)
+- save/load config (not yet)
+- Simple set buckets or no buckets (will fill all the necessary params) (not yet)
 
 Other changes from original pull requests
 - proper calculation of step count (in original it would count also non image files, giving you wildly exgerrated step-count)
