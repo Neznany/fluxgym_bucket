@@ -38,7 +38,7 @@ resolution height: 0
 Resize and Resolution width should be the same, whatever it is 512, 768...
 It will resize all images to 768 in the shortest side and crop from them to the square. If your images are not square (for example portrait aspect) the result LORA will love to crop heads and feet
 
-# Example 1 for bucket with mostly square images or mix of square and non square
+# Example 1 for bucket with mostly square images or equal mix of square and non square images
 You should manually create the desired multi-resolution images. Don't just gobble random images in various random sizes - this will NOT work as you imagine. So say stick to 768 x 768, 768 x 1024, 1024 x 768 for 3 buckets. If you put random images that are seriously different than the resolution the result will be glorified garbage as the resizing will make it blurry (LORA seems to picks up on that part most).
 You probably want to always use --bucket_no_upscale because upsaclaing buckets makes things worse every time. 
 In short: create the image set with only a few different image sizes, but also don't go crazy on the size itself (large size will not help, rather make things worse), keep it around the size they will be used as specified in Training Resolution (So 512, 768...)
