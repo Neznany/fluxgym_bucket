@@ -65,8 +65,6 @@ resolution height: 0
 
 (I know the script says min_bucket_reso and max_bucket_reso are ignored if bucket_no_upscale is set, but actually it needs to be set as the max bucket size is calculated from it)
 
-If all images are within one bucket (they are the same size), this doesn't need to be set but if you have multiple buckets it NEEDS to be set.
-
 Setting resize 0 will **not** resize the input images and it will fit images to 768 * 768 pixel area (it means the buckets will all be created to fit the pixel area, so even if you have 768 x 1024, the bucket will be sized down to 640 x 864 and so your original images will be resized (as the area of 640 x 864 is close to 768 x 768). If you for example want area fit 768 x 1024 then you can set 896 as the square area (resolution width) because 896 x 896 is roughly same area as 768 x 1024
 
 So this it's a good option if you have most images square and then add various odd aspect ratios or say you have 1/3 square 1/3 portrait and 1/3 landscape
@@ -122,7 +120,6 @@ resolution height: 1024
 --max_bucket_reso set: 1024  (set to the reslolution width or height (whichever is larger) or larger)
 
 (I know the script says min_bucket_reso and max_bucket_reso are ignored if bucket_no_upscale is set, but actually it needs to be set as the max bucket size is calculated from it)
-If all images are within one bucket (they are the same size), this doesn't need to be set but if you have multiple buckets it NEEDS to be set.
 
 will create buckets to fit the pixel area of 768x1024 so if you have 768 x 1024 images they will be directly used in the bucket, same if you have 1024 x 768, they will be in another bucket unchanged as the area is the same.
 This is a good option if your images are largely non-square. Setting resolution to the size of your images will ensure they will be used without cropping and resizing during the bucket creation. 
