@@ -18,7 +18,7 @@ Enhanced Dead simple web UI for training FLUX LoRA **with LOW VRAM (12GB/16GB/20
   
   ![image](https://github.com/user-attachments/assets/d6279174-6c03-44b7-88c9-d5fba58e3b85)
 
-- Simple set buckets or no buckets (will fill all the necessary params) 
+- Simple set buckets or no buckets (will fill all the necessary params) Before clicking on the Set Bucket, setup Train Resolution width/height as the numbers will be also used in the config. Then press Quick: Enable Buckets which will then fill all the (few) necessary parameters for proper bucket handling. 
   
   ![image](https://github.com/user-attachments/assets/8099e9de-e337-488f-a9e4-e04ae019a8b4)
 
