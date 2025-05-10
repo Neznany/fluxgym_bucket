@@ -21,6 +21,8 @@ from argparse import Namespace
 import train_network
 import toml
 import re
+import json
+
 MAX_IMAGES = 150
 
 with open('models.yaml', 'r') as file:
@@ -911,6 +913,620 @@ function() {
 current_account = account_hf()
 print(f"current_account={current_account}")
 
+
+
+# fpham added to support advanced options ****************************************
+# Note: These functions take values and return values, consistent with Gradio event handling
+def fill_bucket_parameters_logic(resolution_x_value, resolution_y_value, resize_value, *advanced_component_values): # Takes values
+    """Calculates new values for bucket-related parameters and resize."""
+    global advanced_component_ids # Use global list to map values/positions
+    input_advanced_values_map = dict(zip(advanced_component_ids, advanced_component_values))
+
+    maxres = max(resolution_x_value, resolution_y_value) # Get max reso from input values
+    output_advanced_values = []
+    # Iterate through global component IDs to ensure output order matches outputs list
+    for elem_id in advanced_component_ids:
+        if elem_id == "--enable_bucket":
+            output_advanced_values.append(True)
+        elif elem_id == "--max_bucket_reso":
+            output_advanced_values.append(maxres) # Set max reso to resolutionX or y value
+        elif elem_id == "--bucket_no_upscale":
+            output_advanced_values.append(True)
+        else:
+            # Keep the original value for others
+            output_advanced_values.append(input_advanced_values_map.get(elem_id, None)) # Get from input values map
+
+    new_resize_value = 0 # Set resize to 0 when enabling buckets
+
+    # Return the calculated new values corresponding to the outputs list [*advanced_components, resize]
+    return (*output_advanced_values, new_resize_value)
+
+def disable_buckets_logic(resolution_x_value, resize_value, *advanced_component_values): # Takes values
+    """Calculates new values to disable buckets and sets resize to resolutionX."""
+    global advanced_component_ids # Use global list to map values/positions
+    input_advanced_values_map = dict(zip(advanced_component_ids, advanced_component_values))
+
+    output_advanced_values = []
+    # Iterate through global component IDs to ensure output order matches outputs list
+    for elem_id in advanced_component_ids:
+        if elem_id == "--enable_bucket":
+            output_advanced_values.append(False)
+        elif elem_id == "--bucket_no_upscale":
+            output_advanced_values.append(False)
+        else:
+            # Keep the original value for others
+            output_advanced_values.append(input_advanced_values_map.get(elem_id, None)) # Get from input values map
+
+    new_resize_value = resolution_x_value # Set resize to resolutionX value
+
+    # Return the calculated new values corresponding to the outputs list [*advanced_components, resize]
+    # To make the UI consistent, we should return the updated advanced values.
+    # Assuming the intent was to update the checkboxes in the UI: outputs=[*advanced_components, resize]
+    # If outputs is [resize], this function should only return new_resize_value.
+    # Let's match the corrected outputs assumption (update checkboxes)
+    return (*output_advanced_values, new_resize_value)
+
+
+def save_parameters_logic(
+    base_model_value, lora_name_value, resolutionX_value, resolutionY_value, resize_value, seed_value,
+    workers_value, concept_sentence_value, learning_rate_value, network_dim_value, max_train_epochs_value,
+    save_every_n_epochs_value, timestep_sampling_value, guidance_scale_value, vram_value, num_repeats_value,
+    sample_prompts_value, sample_every_n_steps_value,
+    filename_value, # Filename component value
+    *advanced_component_values # Tuple of advanced parameter values
+):
+    """Saves all relevant parameter values to a JSON file in the configs folder."""
+
+    global advanced_component_ids # Use global list to map values/positions
+
+    # Collect basic parameters
+    params = {
+        "base_model": base_model_value,
+        "lora_name": lora_name_value,
+        "resolutionX": resolutionX_value,
+        "resolutionY": resolutionY_value,
+        "resize": resize_value,
+        "seed": seed_value,
+        "workers": workers_value,
+        "concept_sentence": concept_sentence_value,
+        "learning_rate": learning_rate_value,
+        "network_dim": network_dim_value,
+        "max_train_epochs": max_train_epochs_value,
+        "save_every_n_epochs": save_every_n_epochs_value,
+        "timestep_sampling": timestep_sampling_value,
+        "guidance_scale": guidance_scale_value,
+        "vram": vram_value,
+        "num_repeats": num_repeats_value,
+        "sample_prompts": sample_prompts_value,
+        "sample_every_n_steps": sample_every_n_steps_value,
+    }
+
+    # Collect advanced parameters using the global IDs and input values
+    advanced_params = dict(zip(advanced_component_ids, advanced_component_values))
+    params["advanced_parameters"] = advanced_params
+
+    # Construct the full save path
+    if not filename_value or not filename_value.strip():
+        gr.Warning("Please provide a filename to save.")
+        return # Nothing to return as outputs=None
+
+    save_filename = filename_value.strip()
+    if not save_filename.lower().endswith(".json"):
+        save_filename += ".json"
+    save_path = os.path.join("configs", save_filename)
+
+    try:
+        # Ensure the configs folder exists
+        os.makedirs("configs", exist_ok=True)
+
+        with open(save_path, "w") as f:
+            json.dump(params, f, indent=4)
+        gr.Info(f"Parameters saved to {save_path}")
+        # Refresh the dropdown after saving
+        updated_json_files = get_json_files()
+        return gr.update(choices=updated_json_files, value=save_filename) # Return update for dropdown
+    except Exception as e:
+        gr.Error(f"Error saving parameters to {save_path}: {e}")
+        print(f"Error saving parameters: {e}")
+        return gr.update() # Return no update for dropdown on failure
+
+
+def load_parameters_logic(save_filename_value): # Only need the value from the filename component
+    """Loads parameters from a JSON file and returns the values to update the Gradio interface."""
+
+    global advanced_component_ids # Use global list for mapping
+
+    if not save_filename_value or not save_filename_value.strip():
+        gr.Warning("Please select or provide a filename to load.")
+        # Return None or default values for all outputs
+        # Need to return the correct number of outputs corresponding to outputs list
+        num_basic_outputs = 18 # Count basic parameters in the outputs list
+        num_advanced_outputs = len(advanced_component_ids)
+        return (None,) * num_basic_outputs + (None,) * num_advanced_outputs # Return tuple of None
+
+    save_path = os.path.join("configs", save_filename_value.strip())
+
+    try:
+        with open(save_path, "r") as f:
+            params = json.load(f)
+
+        # Get basic parameter values from the loaded dictionary
+        # Use .get() with a default (like None) to handle missing keys gracefully
+        base_model_val = params.get("base_model", None)
+        lora_name_val = params.get("lora_name", None)
+        resolutionX_val = params.get("resolutionX", None)
+        resolutionY_val = params.get("resolutionY", None)
+        resize_val = params.get("resize", None)
+        seed_val = params.get("seed", None)
+        workers_val = params.get("workers", None)
+        concept_sentence_val = params.get("concept_sentence", None)
+        learning_rate_val = params.get("learning_rate", None)
+        network_dim_val = params.get("network_dim", None)
+        max_train_epochs_val = params.get("max_train_epochs", None)
+        save_every_n_epochs_val = params.get("save_every_n_epochs", None)
+        timestep_sampling_val = params.get("timestep_sampling", None)
+        guidance_scale_val = params.get("guidance_scale", None)
+        vram_val = params.get("vram", None)
+        num_repeats_val = params.get("num_repeats", None)
+        sample_prompts_val = params.get("sample_prompts", None)
+        sample_every_n_steps_val = params.get("sample_every_n_steps", None)
+
+        # Get advanced parameter values from the loaded dictionary
+        advanced_params = params.get("advanced_parameters", {})
+        output_advanced_values = []
+        # Iterate through the global component IDs to ensure output order matches the outputs list
+        for elem_id in advanced_component_ids:
+             # Get value from the loaded dictionary; default to None if not found
+             output_advanced_values.append(advanced_params.get(elem_id, None))
+
+        gr.Info(f"Parameters loaded from {save_path}")
+
+        # Return all basic values followed by all advanced values
+        # The order must exactly match the outputs list defined in the .click() event
+        return (
+            base_model_val, lora_name_val, resolutionX_val, resolutionY_val, resize_val,
+            seed_val, workers_val, concept_sentence_val, learning_rate_val, network_dim_val,
+            max_train_epochs_val, save_every_n_epochs_val, timestep_sampling_val, guidance_scale_val,
+            vram_val, num_repeats_val, sample_prompts_val, sample_every_n_steps_val,
+            *output_advanced_values # Unpack the collected advanced values into the return tuple
+        )
+
+    except FileNotFoundError:
+        gr.Error(f"Config file not found: {save_path}")
+        # Return None or default values for all outputs
+        num_basic_outputs = 18
+        num_advanced_outputs = len(advanced_component_ids)
+        return (None,) * num_basic_outputs + (None,) * num_advanced_outputs
+    except json.JSONDecodeError:
+         gr.Error(f"Error decoding JSON file: {save_path}. File might be corrupted.")
+         num_basic_outputs = 18
+         num_advanced_outputs = len(advanced_component_ids)
+         return (None,) * num_basic_outputs + (None,) * num_advanced_outputs
+    except Exception as e:
+        gr.Error(f"Error loading parameters from {save_path}: {e}")
+        print(f"Error loading parameters: {e}")
+        # Return None or default values for all outputs
+        num_basic_outputs = 18
+        num_advanced_outputs = len(advanced_component_ids)
+        return (None,) * num_basic_outputs + (None,) * num_advanced_outputs
+
+
+
+def get_json_files():
+    """Returns a list of JSON files in the configs directory."""
+    try:
+        configs_dir = "configs"
+        # Ensure the directory exists. exist_ok=True prevents error if it exists.
+        os.makedirs(configs_dir, exist_ok=True)
+        print(f"Ensured directory exists: {configs_dir}") # Debug print
+
+        # List files *after* ensuring the directory exists
+        files = [f for f in os.listdir(configs_dir) if f.lower().endswith(".json") and os.path.isfile(os.path.join(configs_dir, f))]
+        files.sort()
+        print(f"Found {len(files)} json config files in {configs_dir}: {files}") # Debug print
+        return files
+    except Exception as e:
+        print(f"Error listing config files in {configs_dir}: {e}")
+        return []
+
+
+# --- New function to save as Kohya JSON ---
+def save_as_kohya_json_logic(
+    base_model_value, lora_name_value, resolutionX_value, resolutionY_value, resize_value, seed_value,
+    workers_value, concept_sentence_value, learning_rate_value, network_dim_value, max_train_epochs_value,
+    save_every_n_epochs_value, timestep_sampling_value, guidance_scale_value, vram_value, num_repeats_value,
+    sample_prompts_value, sample_every_n_steps_value,
+    filename_value, # Filename for the Kohya JSON
+    *advanced_component_values # Tuple of advanced parameter values
+):
+    """Saves current parameters to a JSON file formatted for Kohya's sd-scripts (Flux training)."""
+
+    global advanced_component_ids
+    # Create a mapping from advanced component elem_id (with --) to its value
+    advanced_values_map = dict(zip(advanced_component_ids, advanced_component_values))
+
+    if not lora_name_value:
+        gr.Warning("Please provide a LoRA name before saving as Kohya JSON.")
+        return # No outputs
+
+    if not filename_value or not filename_value.strip():
+        gr.Warning("Please provide a filename to save the Kohya config.")
+        return # No outputs
+
+    # --- Define Kohya JSON Template Structure (Based on provided example) ---
+    # Initialize with defaults that match the example or common Kohya values
+    kohya_config = {
+      "LoRA_type": "Flux1",
+      # "LyCORIS_preset": "full", # Skip LyCORIS specific
+      "adaptive_noise_scale": 0, # Default based on example
+      "additional_parameters": "", # Not in UI
+      "ae": resolve_path_without_quotes("models/vae/ae.sft"), # Fixed path
+      "apply_t5_attn_mask": False, # Default based on example
+      "async_upload": False, # Default based on example
+      # Block specific params - Skip
+      "bucket_no_upscale": False, # Default based on example
+      "bucket_reso_steps": 64, # Default based on example
+      # "bypass_mode": False, # Skip
+      "cache_latents": False, # Default based on example
+      "cache_latents_to_disk": True, # Default based on example
+      "caption_dropout_every_n_epochs": 0, # Default based on example
+      "caption_dropout_rate": 0, # Default based on example
+      "caption_extension": ".txt", # Fixed
+      "clip_l": resolve_path_without_quotes("models/clip/clip_l.safetensors"), # Fixed path
+      "clip_skip": 1, # Default based on example
+      "color_aug": False, # Default based on example
+      # "constrain": 0, # Skip
+      # Conv specific params - Skip
+      "cpu_offload_checkpointing": False, # Default based on example
+      "dataset_config": resolve_path_without_quotes(f"outputs/{slugify(lora_name_value)}/dataset.toml"), # Path to dataset config
+      "debiased_estimation_loss": False, # Default based on example
+      # "decompose_both": False, # Skip
+      "dim_from_weights": False, # Default based on example
+      "discrete_flow_shift": 3.1582, # Fixed from gen_sh
+      # "dora_wd": False, # Skip
+      # "double_blocks_to_swap": 0, # Skip
+      # "down_lr_weight": "", # Skip
+      "dynamo_backend": "no", # Default based on example
+      "dynamo_mode": "default", # Default based on example
+      "dynamo_use_dynamic": False, # Default based on example
+      "dynamo_use_fullgraph": False, # Default based on example
+      # "enable_all_linear": False, # Skip
+      "enable_bucket": False, # Default based on example
+      "epoch": 0, # Will be mapped from max_train_epochs
+      "extra_accelerate_launch_args": "", # Skip
+      "factor": -1, # Default based on example
+      "flip_aug": False, # Default based on example
+      "flux1_cache_text_encoder_outputs": False, # Will map from cache_text_encoder_outputs
+      "flux1_cache_text_encoder_outputs_to_disk": True, # Will map from cache_text_encoder_outputs_to_disk
+      "flux1_checkbox": True, # Appears UI specific
+      "fp8_base": True, # Default based on example
+      "fp8_base_unet": False, # Default based on example
+      "full_bf16": False, # Default based on example
+      "full_fp16": False, # Default based on example
+      "gpu_ids": "", # Skip
+      "gradient_accumulation_steps": 1, # Default based on example
+      "gradient_checkpointing": True, # Default based on example
+      "guidance_scale": 1.0, # Default based on example
+      "highvram": True, # Default based on example (might need to map from advanced if different)
+      "huber_c": 0.1, # Default based on example
+      "huber_schedule": "snr", # Default based on example
+      # Huggingface upload params - Skip
+      # Img specific params - Skip
+      "in_dims": "", # Skip
+      "ip_noise_gamma": 0, # Default based on example
+      "ip_noise_gamma_random_strength": False, # Default based on example
+      "keep_tokens": 0, # Default based on example
+      "learning_rate": 0.0005, # Default based on example
+      "log_config": False, # Default based on example
+      "log_tracker_config": "", # Skip
+      "log_tracker_name": "", # Skip
+      "log_with": "", # Skip
+      "logging_dir": resolve_path_without_quotes("logs"), # Default Kohya log dir
+      "loraplus_lr_ratio": 0, # Skip
+      "loraplus_text_encoder_lr_ratio": 0, # Skip
+      "loraplus_unet_lr_ratio": 0, # Skip
+      "loss_type": "l2", # Default from gen_sh
+      "lowvram": False, # Default based on example
+      "lr_scheduler": "cosine_with_restarts", # Default based on example
+      "lr_scheduler_args": "", # Default based on example
+      "lr_scheduler_num_cycles": 3, # Default based on example
+      "lr_scheduler_power": 1, # Default based on example
+      "lr_scheduler_type": "", # Default based on example, redundant if lr_scheduler is set
+      "lr_warmup": 0, # Default based on example
+      "lr_warmup_steps": 0, # Default based on example
+      "main_process_port": 0, # Default based on example
+      "masked_loss": False, # Default based on example
+      "max_bucket_reso": 1024, # Default based on example
+      "max_data_loader_n_workers": 0, # Default based on example
+      "max_grad_norm": 1.0, # Default based on example
+      "max_resolution": "512,512", # Default based on example
+      "max_timestep": 1000, # Default based on example
+      "max_token_length": 75, # Default based on example
+      "max_train_epochs": 0, # Default based on example (use 'epoch' instead)
+      "max_train_steps": 0, # Default based on example
+      "mem_eff_attn": False, # Default based on example
+      "mem_eff_save": False, # Default based on example
+      # Metadata params - Skip
+      "mid_lr_weight": "", # Skip
+      "min_bucket_reso": 256, # Default based on example
+      "min_snr_gamma": 5, # Default based on example
+      "min_timestep": 0, # Default based on example
+      "mixed_precision": "bf16", # Default based on example
+      "model_list": "custom", # Fixed
+      "model_prediction_type": "raw", # Fixed from gen_sh
+      "module_dropout": 0, # Default based on example
+      "multi_gpu": False, # Default based on example
+      "multires_noise_discount": 0.3, # Default based on example
+      "multires_noise_iterations": 6, # Default based on example
+      "network_alpha": 1, # Default based on example
+      "network_dim": 1, # Default based on example
+      "network_dropout": 0, # Default based on example
+      "network_weights": "", # Skip
+      "noise_offset": 0.05, # Default based on example
+      "noise_offset_random_strength": False, # Default based on example
+      "noise_offset_type": "Multires", # Default based on example
+      "num_cpu_threads_per_process": 2, # Default based on example
+      "num_machines": 1, # Default based on example
+      "num_processes": 1, # Default based on example
+      "optimizer": "AdamW8bit", # Default based on example
+      "optimizer_args": "", # Default based on example
+      "output_dir": resolve_path_without_quotes(f"outputs/{slugify(lora_name_value)}"), # Path to output folder
+      "pretrained_model_name_or_path": "", # Will map later
+      "prior_loss_weight": 1, # Default based on example
+      "random_crop": False, # Default based on example
+      "rank_dropout": 0, # Default based on example
+      "rank_dropout_scale": False, # Default based on example
+      "reg_data_dir": "", # Skip (no reg images in UI)
+      "rescaled": False, # Default based on example
+      "resume": "", # Default based on example
+      "resume_from_huggingface": "", # Default based on example
+      "sample_every_n_epochs": 0, # Default based on example
+      "sample_every_n_steps": 0, # Default based on example
+      "sample_prompts": "", # Default based on example
+      "sample_sampler": "euler_a", # Default based on example
+      "save_as_bool": False, # Default based on example
+      "save_every_n_epochs": 1, # Default based on example
+      "save_every_n_steps": 0, # Default based on example
+      "save_last_n_epochs": 0, # Default based on example
+      "save_last_n_epochs_state": 0, # Default based on example
+      "save_last_n_steps": 0, # Default based on example
+      "save_last_n_steps_state": 0, # Default based on example
+      "save_model_as": "safetensors", # Fixed from gen_sh
+      "save_precision": "bf16", # Default based on example
+      "save_state": False, # Default based on example
+      "save_state_on_train_end": False, # Default based on example
+      "save_state_to_huggingface": False, # Default based on example
+      "scale_v_pred_loss_like_noise_pred": False, # Default based on example
+      "scale_weight_norms": 0, # Default based on example
+      "sdxl": False, # Default (assuming not SDXL)
+      "sdxl_cache_text_encoder_outputs": False, # Default based on example
+      "sdxl_no_half_vae": False, # Default based on example
+      "seed": 0, # Default based on example
+      "shuffle_caption": False, # Default based on example
+      # Single block params - Skip
+      "skip_cache_check": False, # Default based on example
+      "skip_until_initial_step": False, # Default based on example
+      "split_mode": False, # Default based on example
+      "split_qkv": False, # Default based on example
+      "stop_text_encoder_training": 0, # Default based on example
+      "t5xxl": resolve_path_without_quotes("models/clip/t5xxl_fp16.safetensors"), # Fixed path
+      "t5xxl_lr": 0, # Default based on example
+      "t5xxl_max_token_length": 512, # Default based on example
+      "text_encoder_lr": 0, # Default based on example
+      "timestep_sampling": "sigmoid", # Default based on example
+      "train_batch_size": 2, # Default based on example
+      "train_blocks": "all", # Default based on example
+      "train_data_dir": resolve_path_without_quotes(f"datasets/{slugify(lora_name_value)}"), # Path to dataset folder
+      # Train block indices - Skip
+      "train_norm": False, # Default based on example
+      "train_on_input": True, # Default based on example
+      "train_t5xxl": False, # Default based on example
+      "training_comment": "", # Default based on example
+      # Txt specific params - Skip
+      "unet_lr": 0.0005, # Default based on example
+      "unit": 1, # Default based on example
+      # "up_lr_weight": "", # Skip
+      # "use_cp": False, # Skip
+      # "use_scalar": False, # Skip
+      # "use_tucker": False, # Skip
+      "v2": False, # Default based on example
+      "v_parameterization": False, # Default based on example
+      "v_pred_like_loss": 0, # Default based on example
+      "vae": "", # Default based on example (maybe for SD1.5?), use 'ae' for Flux
+      "vae_batch_size": 0, # Default based on example
+      # Validation params - Skip
+      # Wandb params - Skip
+      "weighted_captions": False, # Default based on example
+      "xformers": "xformers", # Default based on example
+      # Zero* params - Skip
+    }
+
+    # --- Populate Basic Parameters (Override template) ---
+    # Ensure correct types where needed, default to template value if input is None
+    kohya_config["seed"] = int(seed_value) if seed_value is not None else kohya_config.get("seed", 0)
+    kohya_config["max_data_loader_n_workers"] = int(workers_value) if workers_value is not None else kohya_config.get("max_data_loader_n_workers", 0)
+
+    # Handle learning_rate carefully - convert string to float
+    try:
+        if learning_rate_value is not None and learning_rate_value != "":
+            kohya_config["learning_rate"] = float(learning_rate_value)
+        # Else, keep the template default
+    except (ValueError, TypeError):
+        gr.Warning(f"Invalid learning rate value: '{learning_rate_value}'. Using default.")
+        # Template default is kept if conversion fails
+
+    kohya_config["network_dim"] = int(network_dim_value) if network_dim_value is not None else kohya_config.get("network_dim", 1)
+    # Use 'epoch' field for total epochs based on example JSON
+    kohya_config["epoch"] = int(max_train_epochs_value) if max_train_epochs_value is not None else kohya_config.get("epoch", 0)
+    kohya_config["max_train_epochs"] = 0 # Set max_train_epochs to 0 if using epoch
+
+    kohya_config["save_every_n_epochs"] = int(save_every_n_epochs_value) if save_every_n_epochs_value is not None else kohya_config.get("save_every_n_epochs", 1)
+    kohya_config["timestep_sampling"] = timestep_sampling_value if timestep_sampling_value is not None else kohya_config.get("timestep_sampling", "sigmoid")
+    kohya_config["guidance_scale"] = float(guidance_scale_value) if guidance_scale_value is not None else kohya_config.get("guidance_scale", 1.0)
+    kohya_config["sample_prompts"] = sample_prompts_value if sample_prompts_value is not None else ""
+    kohya_config["sample_every_n_steps"] = int(sample_every_n_steps_value) if sample_every_n_steps_value is not None else kohya_config.get("sample_every_n_steps", 0)
+    kohya_config["max_resolution"] = f"{int(resolutionX_value) if resolutionX_value is not None else 512},{int(resolutionY_value) if resolutionY_value is not None and resolutionY_value > 0 else int(resolutionX_value) if resolutionX_value is not None else 512}"
+    kohya_config["train_batch_size"] = 1 # Fixed as per dataset toml
+
+
+    # Map specific paths based on base_model_value
+    model_config = models.get(base_model_value) # Use .get for safety
+    if model_config:
+        model_file = model_config.get("file")
+        repo = model_config.get("repo")
+        if model_file and repo:
+            if base_model_value in ["flux-dev", "flux-schnell"]: # Use list check
+                model_folder = "models/unet"
+            else:
+                model_folder = f"models/unet/{repo}"
+            kohya_config["pretrained_model_name_or_path"] = resolve_path_without_quotes(os.path.join(model_folder, model_file))
+        else:
+            gr.Warning(f"Base model '{base_model_value}' config in models.yaml is incomplete. Cannot set pretrained_model_name_or_path.")
+            # Template placeholder is kept
+    else:
+        gr.Warning(f"Unknown base model: {base_model_value}. Cannot set pretrained_model_name_or_path.")
+        # Template placeholder is kept
+
+
+    # --- VRAM based settings (Override template defaults if not in advanced) ---
+    # These are the defaults from gen_sh based on VRAM, applied IF NOT OVERRIDDEN in advanced options
+    optimizer_type_vram = "adamw8bit"
+    split_mode_vram = False
+    lr_scheduler_vram = "constant_with_warmup" # Default for adafactor in gen_sh
+    max_grad_norm_vram = 1.0 # Default for adamw8bit/general
+    network_alpha_vram = int(network_dim_value) if network_dim_value is not None else kohya_config.get("network_dim", 1) # Default alpha == dim
+    network_args_train_blocks_vram = "all" # Default
+
+    if vram_value == "16G":
+        optimizer_type_vram = "adafactor"
+        max_grad_norm_vram = 0.0 # Adafactor specific default
+        lr_scheduler_vram = "constant_with_warmup"
+    elif vram_value == "12G":
+        optimizer_type_vram = "adafactor"
+        split_mode_vram = True
+        network_args_train_blocks_vram = "single" # Note: this isn't a direct JSON key in example
+        max_grad_norm_vram = 0.0 # Adafactor specific default
+        lr_scheduler_vram = "constant_with_warmup"
+
+    # Apply VRAM defaults (overwriting template)
+    kohya_config["optimizer"] = optimizer_type_vram
+
+    # Note: split_mode and network_args are command line args in gen_sh, not direct JSON keys in the example
+    # If we want to represent them in the JSON, we'd need to add them to the template.
+    # Let's add them to the template for better representation of the config.
+
+    # Re-define template snippet for added keys
+    kohya_config["split_mode"] = False # Added to template
+    kohya_config["network_args"] = "" # Added to template (as a string)
+    kohya_config["lr_scheduler"] = kohya_config.get("lr_scheduler", "cosine_with_restarts") # Keep template or default
+    kohya_config["max_grad_norm"] = kohya_config.get("max_grad_norm", 1.0) # Keep template or default
+
+
+    # Apply VRAM defaults (overwriting template)
+    kohya_config["optimizer"] = optimizer_type_vram
+    kohya_config["split_mode"] = split_mode_vram
+    if network_args_train_blocks_vram:
+        # Format network_args as a string expected by Kohya command line? Or try to parse?
+        # Let's just add the flag as a string argument. It might need manual adjustment in Kohya.
+        # Or better, find if Kohya JSON has a specific way to represent network_args.
+        # The example doesn't show it. Let's skip mapping network_args for simplicity matching the example.
+        pass # Skip network_args mapping for now
+
+    # Set LR scheduler based on VRAM logic if not overridden by advanced
+    if optimizer_type_vram == "adafactor":
+        kohya_config["lr_scheduler"] = lr_scheduler_vram
+    # For adamw8bit, the example uses "cosine_with_restarts". Let's use that as default for adamw8bit unless advanced overrides.
+    # This is handled below by advanced overrides.
+
+    # Set max_grad_norm based on VRAM logic if not overridden by advanced
+    kohya_config["max_grad_norm"] = max_grad_norm_vram
+
+
+    # Set network_alpha default based on calculated dim
+    kohya_config["network_alpha"] = network_alpha_vram
+
+
+    # --- Override with Advanced Parameters ---
+    # Iterate through advanced component IDs. If the corresponding Kohya key exists (after stripping '--'), use the advanced value.
+    for elem_id in advanced_component_ids:
+        kohya_key = elem_id.lstrip('-') # Remove leading hyphens
+        value = advanced_values_map.get(elem_id)
+
+        # Check if this key exists in our kohya_config dictionary (which includes template + VRAM defaults)
+        if kohya_key in kohya_config:
+             # Convert numbers if the key's current value is a number type or the input looks like a number
+             # Handle empty string or None input for numbers by skipping the update
+            if isinstance(kohya_config.get(kohya_key), (int, float)) or (isinstance(value, str) and value.replace('.', '', 1).isdigit()):
+                try:
+                    if value is not None and value != "":
+                        # Convert to int or float based on the value or target type
+                        if '.' in str(value):
+                            kohya_config[kohya_key] = float(value)
+                        elif isinstance(kohya_config.get(kohya_key), float):
+                            kohya_config[kohya_key] = float(value) # Convert int strings to float if target is float
+                        else:
+                            kohya_config[kohya_key] = int(value)
+                         # If value is None or empty string, we just don't update,
+                         # keeping the VRAM-derived or template default value.
+                except (ValueError, TypeError):
+                    print(f"Warning: Could not convert advanced param '{elem_id}' value '{value}' to number. Keeping previous value.")
+            else:
+                # For boolean or string types, just assign the value directly
+                # Handle None values - remove the key if value is None? Or leave it? Let's leave it for now.
+                kohya_config[kohya_key] = value
+
+        # Handle specific renames/mappings (e.g. cache_text_encoder_outputs -> flux1_cache_text_encoder_outputs)
+        # Add these checks *after* the generic mapping, as some might exist in both places
+        if elem_id == "--cache_text_encoder_outputs":
+            kohya_config["flux1_cache_text_encoder_outputs"] = advanced_values_map.get(elem_id) # Use the advanced value
+        if elem_id == "--cache_text_encoder_outputs_to_disk":
+            kohya_config["flux1_cache_text_encoder_outputs_to_disk"] = advanced_values_map.get(elem_id) # Use the advanced value
+        # Add other renames/special mappings here if needed
+        # e.g., if "--network_alpha" was in advanced, it would already map to "network_alpha"
+
+    # --- Final Adjustments / Clean up ---
+    # Ensure boolean values are actual booleans.
+    # Iterate through keys that are booleans in the template.
+    boolean_keys_in_template = {k for k, v in kohya_config.items() if isinstance(v, bool)}
+    for key in boolean_keys_in_template:
+        val = kohya_config.get(key) # Get value from current config state
+        if isinstance(val, str):
+            if val.lower() in ['true', '1']:
+                 kohya_config[key] = True
+            elif val.lower() in ['false', '0']:
+                 kohya_config[key] = False
+            else:
+                 print(f"Warning: Advanced param '{key}' value '{val}' is not a boolean string. Keeping as is.")
+        elif isinstance(val, (int, float)):
+            kohya_config[key] = bool(val) # Convert non-zero numbers to True, zero to False
+        # If val is already bool or None, keep it.
+
+    # Convert some common numbers back to int if they were floats in the template but usually int
+    int_keys = ["seed", "network_dim", "epoch", "save_every_n_epochs", "sample_every_n_steps", "max_data_loader_n_workers", "max_train_steps", "max_bucket_reso", "min_bucket_reso"]
+    for key in int_keys:
+        if key in kohya_config and isinstance(kohya_config[key], (int, float)):
+            kohya_config[key] = int(kohya_config[key])
+
+    # Remove None values if Kohya validation might complain (optional, JSON supports null)
+    # kohya_config = {k: v for k, v in kohya_config.items() if v is not None}
+
+    # --- Save to JSON File ---
+    # Use 'configs_k' folder for consistency with other configs_k
+    save_filename = filename_value.strip()
+    if not save_filename.lower().endswith(".json"):
+        save_filename += ".json"
+    save_path = os.path.join("configs_k", save_filename)
+
+    try:
+        os.makedirs("configs_k", exist_ok=True) # Ensure configs_k folder exists
+        with open(save_path, "w", encoding="utf-8") as f: # Specify encoding
+            json.dump(kohya_config, f, indent=4)
+        gr.Info(f"Kohya config saved to {save_path}")
+    except Exception as e:
+        gr.Error(f"Error saving Kohya config to {save_path}: {e}")
+        print(f"Error saving Kohya config: {e}")
+# end of fpham additions ******************
+
 with gr.Blocks(elem_id="app", theme=theme, css=css, fill_width=True) as demo:
     with gr.Tabs() as tabs:
         with gr.TabItem("Gym"):
@@ -922,6 +1538,22 @@ with gr.Blocks(elem_id="app", theme=theme, css=css, fill_width=True) as demo:
             <button id='autoscroll' class='on hidden'></button>
         </nav>
         """)
+            with gr.Row():
+                json_files = get_json_files()
+                save_filename_dropdown = gr.Dropdown(
+                    choices=json_files,
+                    label="Select Config File",
+                    value=json_files[0] if json_files else None,  # Default value
+                    allow_custom_value=True, # Allow typing a new name
+                    interactive=True,
+                )
+                load_button = gr.Button("Load Config", interactive=True)
+                save_filename = gr.Textbox(label="Config Filename", value="save.json", interactive=True)
+                save_button = gr.Button("Save Config", interactive=True)
+                save_kohya_button = gr.Button("Export as Kohya JSON", interactive=True)
+            with gr.Row():
+                gr.Markdown("Saves/Loads config data (all except images/captions) to/from JSON file in the `/configs` folder. Use 'Export as Kohya JSON' to export for Kohya's training UI in `/configs_k` folder")
+
             with gr.Row(elem_id='container'):
                 with gr.Column():
                     gr.Markdown(
@@ -949,9 +1581,12 @@ with gr.Blocks(elem_id="app", theme=theme, css=css, fill_width=True) as demo:
                     total_steps = gr.Number(0, interactive=False, label="Expected training steps")
                     sample_prompts = gr.Textbox("", lines=5, label="Sample Image Prompts (Separate with new lines)", interactive=True)
                     sample_every_n_steps = gr.Number(0, precision=0, label="Sample Image Every N Steps", interactive=True)
-                    resize = gr.Number(value=512, precision=0, label="Resize Images (0 = don't resize [for buckets])", interactive=True)
-                    resolutionX = gr.Number(value=512, precision=0, label="LORA Resolution width", interactive=True)
-                    resolutionY = gr.Number(value=0, precision=0, label="LORA Resolution height -  0 = square", interactive=True)
+                    resize = gr.Number(value=512, precision=0, label="FluxGym Resize Images (0 = don't resize [for buckets])", interactive=True)
+                    resolutionX = gr.Number(value=512, precision=0, label="Train Resolution width", interactive=True)
+                    resolutionY = gr.Number(value=0, precision=0, label="Train Resolution height (0 = square)", interactive=True)
+                    gr.Markdown("Note: For buckets, set Resize to 0, set --bucket_no_upscale, --enable_buckets, and set --max_bucket_reso to the Train resolution width or height whichever is larger.")
+                    fill_advanced_button = gr.Button("Quick: Enable Buckets")
+                    disable_buckets_button = gr.Button("Quick: Disable Buckets")
                 with gr.Column():
                     gr.Markdown(
                         """# Step 2. Dataset
@@ -1013,7 +1648,7 @@ with gr.Blocks(elem_id="app", theme=theme, css=css, fill_width=True) as demo:
                     with gr.Column(min_width=300):
                         learning_rate = gr.Textbox(label="--learning_rate", info="Learning Rate", value="8e-4", interactive=True)
                     with gr.Column(min_width=300):
-                        save_every_n_epochs = gr.Number(label="--save_every_n_epochs", info="Save every N epochs", value=4, interactive=True)
+                        save_every_n_epochs = gr.Number(label="--save_every_n_epochs", info="Save every N epochs", value=2, interactive=True)
                     with gr.Column(min_width=300):
                         guidance_scale = gr.Number(label="--guidance_scale", info="Guidance Scale", value=1.0, interactive=True)
                     with gr.Column(min_width=300):
@@ -1059,7 +1694,7 @@ with gr.Blocks(elem_id="app", theme=theme, css=css, fill_width=True) as demo:
 
     publish_tab.select(refresh_publish_tab, outputs=lora_rows)
     lora_rows.select(fn=set_repo, inputs=[lora_rows], outputs=[repo_name])
-
+    
     dataset_folder = gr.State()
 
     listeners = [
@@ -1083,6 +1718,95 @@ with gr.Blocks(elem_id="app", theme=theme, css=css, fill_width=True) as demo:
         sample_every_n_steps,
         *advanced_components
     ]
+
+    # FPHAM added this -->
+    # Connect the load button click event
+    # Load logic takes filename value, returns many values
+    # Outputs list includes basic components and unpacked advanced components
+    load_button.click(
+        fn=load_parameters_logic,
+        inputs=[save_filename], # Input is just the filename value
+        outputs=[
+            base_model, lora_name, resolutionX, resolutionY, resize, seed, workers,
+            concept_sentence, learning_rate, network_dim, max_train_epochs,
+            save_every_n_epochs, timestep_sampling, guidance_scale, vram,
+            num_repeats, sample_prompts, sample_every_n_steps,
+            *advanced_components # Unpack the list of advanced components
+        ]
+    ).then( # Chain the update function after loading
+        fn=update,
+        inputs=listeners, # Pass all listener component values to update
+        outputs=[train_script, train_config, dataset_folder] # Update script, config, and dataset_folder state
+    )
+
+    # Connect Quick Set Buttons
+    # Fill buckets logic takes resolutionX, resize, and all advanced component values
+    # It returns updated values for all advanced components and resize
+
+    fill_advanced_button.click(
+        fn=fill_bucket_parameters_logic,
+        inputs=[resolutionX,resolutionY, resize, *advanced_components], # Pass values
+        outputs=[*advanced_components, resize] # Update advanced components and resize
+    ).then( # Chain the update function to regenerate script/config
+         fn=update,
+         inputs=listeners, # Pass all listener component values
+         outputs=[train_script, train_config, dataset_folder] # Update script, config, and dataset_folder state
+    )
+    
+    # Disable buckets logic takes resolutionX, resize, and all advanced component values
+    # It returns updated values for all advanced components and resize (assuming update checkboxes)
+    # If outputs=[resize] is desired, change fn to return only new_resize_value and remove *advanced_components from outputs.
+    # Let's match the assumed intent of updating the checkboxes based on original code modifying component objects.
+    disable_buckets_button.click(
+        fn=disable_buckets_logic,
+        inputs=[resolutionX, resize, *advanced_components], # Pass values
+        outputs=[*advanced_components, resize] # Update advanced components and resize
+    ).then( # Chain the update function
+         fn=update,
+         inputs=listeners, # Pass all listener component values
+         outputs=[train_script, train_config, dataset_folder] # Update script, config, and dataset_folder state
+    )
+
+    # Connect the dropdown selection to the filename textbox
+    save_filename_dropdown.change(
+        fn=lambda x: x if x is not None else "", # Set textbox value to selected dropdown value
+        inputs=save_filename_dropdown,
+        outputs=save_filename
+    )
+
+    # Connect the save button click event
+    # Save logic takes all relevant values and the filename value
+    # No explicit outputs from save_parameters_logic itself (returns None)
+
+    save_button.click(
+        fn=save_parameters_logic,
+        inputs=[
+            base_model, lora_name, resolutionX, resolutionY, resize, seed, workers,
+            concept_sentence, learning_rate, network_dim, max_train_epochs,
+            save_every_n_epochs, timestep_sampling, guidance_scale, vram,
+            num_repeats, sample_prompts, sample_every_n_steps,
+            save_filename, # Pass the filename component value
+            *advanced_components # Unpack the list of advanced components
+        ],
+        outputs=[save_filename_dropdown] # Update the dropdown after saving
+    )
+
+    # --- Connect the new Save as Kohya JSON button ---
+    save_kohya_button.click(
+        fn=save_as_kohya_json_logic,
+        inputs=[
+            base_model, lora_name, resolutionX, resolutionY, resize, seed, workers,
+            concept_sentence, learning_rate, network_dim, max_train_epochs,
+            save_every_n_epochs, timestep_sampling, guidance_scale, vram,
+            num_repeats, sample_prompts, sample_every_n_steps,
+            save_filename, # Pass the filename component value
+            *advanced_components # Pass the values of advanced components
+        ],
+        outputs=None # No UI components are updated by this function
+    )
+
+    # end of FPHAM added this <--
+
     advanced_component_ids = [x.elem_id for x in advanced_components]
     original_advanced_component_values = [comp.value for comp in advanced_components]
     images.upload(
