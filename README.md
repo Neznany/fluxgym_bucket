@@ -14,7 +14,7 @@ Enhanced Dead simple web UI for training FLUX LoRA **with LOW VRAM (12GB/16GB/20
 
 
 # Other features:
-- save/load config (only settings, not the images). Export for kohya_ss config (might need some checking)
+- save/load config (only settings, not the images). Export for kohya_ss config (might need some checking, some params are obvious, some are not ¯\_(ツ)_/¯ )
   
   ![image](https://github.com/user-attachments/assets/d6279174-6c03-44b7-88c9-d5fba58e3b85)
 
