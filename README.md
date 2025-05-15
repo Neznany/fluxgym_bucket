@@ -46,6 +46,8 @@ It will resize all images to 768 in the shortest side and crop from them to the 
 
 # Quick Bucket button example
 
+**(I have images of various sizes, but many are squares)**
+
 You only need to set: 
 
 resolution width: 768
@@ -54,7 +56,9 @@ Press: Quick Enable Buckets
 
 (it will use the resolution width to set max bucket size, it will zero resize, set enable bucket and no upsacale)
 
-Empirical size example:
+Strict size example:
+
+**(I have images mostly of certain sizes such a 1024 x 768 or 768 x 1024 not many squares)**
 
 resolution width: 768
 
