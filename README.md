@@ -44,9 +44,10 @@ resolution height: 0
 Resize and Resolution width should be the same, whatever it is 512, 768...
 It will resize all images to 768 in the shortest side and crop from them to the square. If your images are not square (for example portrait aspect) the result LORA will love to crop heads and feet
 
-# QuickBucket button example
+# Quick Bucket button example
 
 You only need to set: 
+
 resolution width: 768
 
 Press: Quick Enable Buckets
@@ -54,12 +55,15 @@ Press: Quick Enable Buckets
 (it will use the resolution width to set max bucket size, it will zero resize, set enable bucket and no upsacale)
 
 Empirical size example:
+
 resolution width: 768
+
 resolution height: 1024
 
 Press: Quick Enable Buckets
 
 (it will use the whichever is larger (width or height) to set max bucket size, it will zero resize, set enable bucket and no upsacale)
+
 
 # Example 1 for bucket with mostly square images or equal mix of square and non square images
 You should manually create the desired multi-resolution images. Don't just gobble random images in various random sizes - this will NOT work as you imagine. So say stick to 768 x 768, 768 x 1024, 1024 x 768 for 3 buckets. If you put random images that are seriously different than the resolution the result will be glorified garbage as the resizing will make it blurry (LORA seems to picks up on that part most).
