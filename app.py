@@ -23,7 +23,10 @@ import toml
 import re
 import json
 
-MAX_IMAGES = 150
+# Скільки максимум рядків капшенів відображати у UI (щоб Gradio не задихався)
+MAX_CAPTION_ROWS = 150
+# Скільки зображень дозволяємо завантажити і віддати на тренування
+MAX_TRAIN_IMAGES = 2500
 
 with open('models.yaml', 'r') as file:
     models = yaml.safe_load(file)
@@ -181,15 +184,23 @@ def load_captioning(uploaded_files, concept_sentence):
         raise gr.Error(
             "Please upload at least 2 images to train your model (the ideal number with default settings is between 4-30)"
         )
-    elif len(uploaded_images) > MAX_IMAGES:
-        raise gr.Error(f"For now, only {MAX_IMAGES} or less images are allowed for training")
+    # if too many images are uploaded, show warning but don't crash
+    if len(uploaded_images) > MAX_TRAIN_IMAGES:
+        raise gr.Error(
+            f"You uploaded {len(uploaded_images)} images, but the hard limit is {MAX_TRAIN_IMAGES}. Please reduce the batch."
+        )
+    if len(uploaded_images) > MAX_CAPTION_ROWS:
+        gr.Info(
+            f"Showing captions only for the first {MAX_CAPTION_ROWS} images (UI limit). All {len(uploaded_images)} images will be used for training.",
+            duration=5,
+        )
+
     # Update for the captioning_area
-    # for _ in range(3):
     updates.append(gr.update(visible=True))
     # Update visibility and image for each captioning row and image
-    for i in range(1, MAX_IMAGES + 1):
+    for i in range(1, MAX_CAPTION_ROWS + 1):
         # Determine if the current row and image should be visible
-        visible = i <= len(uploaded_images)
+        visible = i <= min(len(uploaded_images), MAX_CAPTION_ROWS)
 
         # Update visibility of the captioning row
         updates.append(gr.update(visible=visible))
@@ -199,14 +210,18 @@ def load_captioning(uploaded_files, concept_sentence):
         updates.append(gr.update(value=image_value, visible=visible))
 
         corresponding_caption = False
-        if(image_value):
+        if image_value:
             base_name = os.path.splitext(os.path.basename(image_value))[0]
             if base_name in txt_files_dict:
                 with open(txt_files_dict[base_name], 'r', encoding='utf-8') as file:
                     corresponding_caption = file.read()
 
         # Update value of captioning area
-        text_value = corresponding_caption if visible and corresponding_caption else concept_sentence if visible and concept_sentence else None
+        text_value = (
+            corresponding_caption
+            if visible and corresponding_caption
+            else concept_sentence if visible and concept_sentence else None
+        )
         updates.append(gr.update(value=text_value, visible=visible))
 
     # Update for the sample caption area
@@ -231,34 +246,39 @@ def resize_image(image_path, output_path, size):
         img_resized = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
         img_resized.save(output_path)
 
-def create_dataset(destination_folder, size, *inputs):
+def create_dataset(destination_folder, size, images, concept_sentence, *captions):
     print("Creating dataset")
-    images = inputs[0]
     if not os.path.exists(destination_folder):
         os.makedirs(destination_folder)
 
-    for index, image in enumerate(images):
+    caption_values = list(captions)
+    uploaded_images = [img for img in images if not img.endswith('.txt')]
+    txt_files = [f for f in images if f.endswith('.txt')]
+    txt_files_dict = {os.path.splitext(os.path.basename(txt))[0]: txt for txt in txt_files}
+
+    for index, image in enumerate(uploaded_images):
         # copy the images to the datasets folder
         new_image_path = shutil.copy(image, destination_folder)
-
-        # if it's a caption text file skip the next bit
-        ext = os.path.splitext(new_image_path)[-1].lower()
-        if ext == '.txt':
-            continue
 
         # resize the images only if it is > 0
         if size > 0:
             resize_image(new_image_path, new_image_path, size)
 
-        # copy the captions
-
-        original_caption = inputs[index + 1]
-
-        image_file_name = os.path.basename(new_image_path)
-        caption_file_name = os.path.splitext(image_file_name)[0] + ".txt"
+        base_name = os.path.splitext(os.path.basename(new_image_path))[0]
+        caption_file_name = base_name + ".txt"
         caption_path = resolve_path_without_quotes(os.path.join(destination_folder, caption_file_name))
+
+        if base_name in txt_files_dict:
+            # existing caption file uploaded by user, copy it over
+            shutil.copy(txt_files_dict[base_name], caption_path)
+            continue
+
+        if index < len(caption_values) and caption_values[index]:
+            original_caption = caption_values[index]
+        else:
+            original_caption = concept_sentence or ""
+
         print(f"image_path={new_image_path}, caption_path = {caption_path}, original_caption={original_caption}")
-        # if caption_path exists, do not write
         if os.path.exists(caption_path):
             print(f"{caption_path} already exists. use the existing .txt file")
         else:
@@ -284,7 +304,8 @@ def run_captioning(images, concept_sentence, *captions):
     processor = AutoProcessor.from_pretrained("multimodalart/Florence-2-large-no-flash-attn", trust_remote_code=True)
 
     captions = list(captions)
-    for i, image_path in enumerate(images):
+    max_count = min(len(images), len(captions))
+    for i, image_path in enumerate(images[:max_count]):
         print(captions[i])
         if isinstance(image_path, str):  # If image is a file path
             image = Image.open(image_path).convert("RGB")
@@ -1607,7 +1628,7 @@ with gr.Blocks(elem_id="app", theme=theme, css=css, fill_width=True) as demo:
                         output_components.append(captioning_area)
                         #output_components = [captioning_area]
                         caption_list = []
-                        for i in range(1, MAX_IMAGES + 1):
+                        for i in range(1, MAX_CAPTION_ROWS + 1):
                             locals()[f"captioning_row_{i}"] = gr.Row(visible=False)
                             with locals()[f"captioning_row_{i}"]:
                                 locals()[f"image_{i}"] = gr.Image(
@@ -1849,7 +1870,7 @@ with gr.Blocks(elem_id="app", theme=theme, css=css, fill_width=True) as demo:
         outputs=[total_steps]
     )
     concept_sentence.change(fn=update_sample, inputs=[concept_sentence], outputs=sample_prompts)
-    start.click(fn=create_dataset, inputs=[dataset_folder, resize, images] + caption_list, outputs=dataset_folder).then(
+    start.click(fn=create_dataset, inputs=[dataset_folder, resize, images, concept_sentence] + caption_list, outputs=dataset_folder).then(
         fn=start_training,
         inputs=[
             base_model,
