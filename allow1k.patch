@@ -1,0 +1,45 @@
+diff --git a/app.py b/app.py
+--- a/app.py
++++ b/app.py
+@@
+-MAX_IMAGES = 150
++# Скільки максимум рядків капшенів відображати у UI (щоб Gradio не задихався)
++MAX_CAPTION_ROWS = 150
++# Скільки зображень ми дозволяємо завантажити і віддати на тренування
++MAX_TRAIN_IMAGES = 2000
+@@ def load_captioning(uploaded_files, concept_sentence):
+-    uploaded_images = [file for file in uploaded_files if not file.endswith('.txt')]
++    uploaded_images = [file for file in uploaded_files if not file.endswith('.txt')]
+     txt_files = [file for file in uploaded_files if file.endswith('.txt')]
+     txt_files_dict = {os.path.splitext(os.path.basename(txt_file))[0]: txt_file for txt_file in txt_files}
+     updates = []
+-    if len(uploaded_images) <= 1:
++    if len(uploaded_images) <= 1:
+         raise gr.Error(
+             "Please upload at least 2 images to train your model (the ideal number with default settings is between 4-30)"
+         )
+-    elif len(uploaded_images) > MAX_IMAGES:
+-        raise gr.Error(f"For now, only {MAX_IMAGES} or less images are allowed for training")
++    # якщо дуже багато — не падаємо, просто попереджаємо і відмальовуємо перші MAX_CAPTION_ROWS
++    if len(uploaded_images) > MAX_TRAIN_IMAGES:
++        raise gr.Error(f"You uploaded {len(uploaded_images)} images, but the hard limit is {MAX_TRAIN_IMAGES}. Please reduce the batch.")
++    if len(uploaded_images) > MAX_CAPTION_ROWS:
++        gr.Info(f"Showing captions only for the first {MAX_CAPTION_ROWS} images (UI limit). All {len(uploaded_images)} images will be used for training.", duration=5)
+@@
+-    for i in range(1, MAX_IMAGES + 1):
++    # Відмалюємо рівно стільки рядків, скільки дозволяє UI
++    for i in range(1, MAX_CAPTION_ROWS + 1):
+         # Determine if the current row and image should be visible
+-        visible = i <= len(uploaded_images)
++        visible = i <= min(len(uploaded_images), MAX_CAPTION_ROWS)
+@@
+-    # Update for the sample caption area
++    # Update for the sample caption area
+     updates.append(gr.update(visible=True))
+     updates.append(gr.update(visible=True))
+@@
+-                        for i in range(1, MAX_IMAGES + 1):
++                        for i in range(1, MAX_CAPTION_ROWS + 1):
+                             locals()[f"captioning_row_{i}"] = gr.Row(visible=False)
+                             with locals()[f"captioning_row_{i}"]:
+                                 locals()[f"image_{i}"] = gr.Image(
